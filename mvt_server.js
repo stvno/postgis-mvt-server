@@ -25,7 +25,7 @@ process.on('unhandledRejection', function(e) {
 var pool = new Pool(pgconfig);
 //app.use(compression()); //Compression seems to slow down significantly and wouldn't add much
 
-app.get('/bgt/:layer/:z/:x/:y.mvt', function(req, res) {
+app.get('/bagactueel/:layer/:z/:x/:y.mvt', function(req, res) {
 	var layer = (req.params.layer);
 	var x = parseInt(req.params.x);
 	var y = parseInt(req.params.y);
@@ -36,35 +36,34 @@ app.get('/bgt/:layer/:z/:x/:y.mvt', function(req, res) {
 	var miny = tile2lat(y+1,z);
 	var maxy = tile2lat(y,z);
 	
-	switch (layer){
-		case 'ondersteunendwaterdeel_2d':
-		case 'scheiding_2d':
-		case 'waterdeel_2d':
-			var col = 'bgt_type';
-			break;
-		case 'begroeidterreindeel_2d':
-		case 'onbegroeidterreindeel_2d':
-			var col = 'bgt_fysiekvoorkomen';
-			break;
-		case 'ondersteunendwegdeel_2d':
-		case 'wegdeel_2d':
-			var col = 'bgt_functie';
-			break;
-		default:
-			var col = 'bgt_status';
-	}
-				
+	
 	
 	var query = `
 	WITH bbox AS (
 		SELECT ST_Transform(ST_MakeEnvelope(${minx},${miny},${maxx},${maxy}, 4326), 28992) AS geom
 	)
 	,items AS (
-		SELECT ST_Transform(wkb_geometry, 4326) geom, lokaalid as id, ${col} as kind 
-		FROM bgt.${layer} , bbox
+		SELECT ST_Transform(wkb_geometry, 4326) geom, gid ,
+  identificatie,
+  aanduidingrecordinactief,
+  aanduidingrecordcorrectie,
+  officieel ,
+  inonderzoek,
+  begindatumtijdvakgeldigheid ,
+  einddatumtijdvakgeldigheid ,
+  documentnummer ,
+  documentdatum ,
+  hoofdadres ,
+  verblijfsobjectstatus,
+  oppervlakteverblijfsobject,
+  geom_valid ,
+  geopunt ,
+  geovlak ,
+  gebruiksdoelverblijfsobject ,
+  gerelateerdpand  
+		FROM bagactueel.${layer} , bbox
 		WHERE ST_Intersects(bbox.geom, wkb_geometry)
-		AND relatievehoogteligging = 0
-		LIMIT 1000 --Security
+		
 	)
 	SELECT ST_AsMVT('${layer}', ST_MakeBox2D(ST_Point(${minx},${miny}), ST_Point(${maxx},${maxy})), 4096, 0, false, 'geom', q) mvt 
 	FROM items AS q
